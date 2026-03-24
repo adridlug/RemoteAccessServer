@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Control Panel - Clients Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css?v=20260315">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Client Control Panel</h1>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <input type="text" id="searchInput" placeholder="Search hostname or IP..." style="flex: 1; min-width: 200px;">
+                    <select id="sortSelect">
+                        <option value="hostname">Sort by Hostname</option>
+                        <option value="last_ping">Sort by Last Ping</option>
+                        <option value="status">Sort by Status</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="refreshRate">Refresh:</label>
+                    <input type="number" id="refreshRate" min="1" max="60" value="5" style="width: 70px;">
+                    <span>sec</span>
+                </div>
+
+                <button id="refreshBtn" onclick="manualRefresh()">🔄 Refresh Now</button>
+                <button id="autoToggleBtn" onclick="toggleAutoRefresh()">⏸ Pause Auto-Refresh</button>
+            </div>
+
+            <div class="info-text">
+                <span id="clientCount">Loading...</span> | Last update: <span id="lastUpdate">Never</span>
+            </div>
+        </header>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Loading client data...</p>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="tbinfos">
+                <thead>
+                    <tr>
+                        <th class="sortable">Hostname</th>
+                        <th class="sortable">Internal IP</th>
+                        <th class="sortable">External IP</th>
+                        <th class="sortable">Current User</th>
+                        <th class="sortable">OS</th>
+                        <th class="sortable">Admin</th>
+                        <th class="sortable">Last Ping</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📭</div>
+                                <p>No clients found. Waiting for first check-in...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshEnabled = true;
+        let refreshInterval = null;
+        let clientData = [];
+        let sortColumn = null;
+        let sortOrder = 'asc';
+
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return 'Never';
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+
+        function timeAgo(timestamp) {
+            if (!timestamp) return 'Never';
+            const date = new Date(timestamp);
+            const now = new Date();
+            const seconds = Math.floor((now - date) / 1000);
+            
+            if (seconds < 60) return `${seconds}s ago`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            return `${Math.floor(seconds / 86400)}d ago`;
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = `Error: ${message}`;
+            errorEl.classList.add('active');
+            setTimeout(() => errorEl.classList.remove('active'), 5000);
+        }
+
+        function setLoading(isLoading) {
+            document.getElementById('loading').classList.toggle('active', isLoading);
+        }
+
+        async function fetchClientData() {
+            try {
+                setLoading(true);
+                const response = await fetch('/getinfos.cgi');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                if (!Array.isArray(data)) {
+                    throw new Error('Invalid response format');
+                }
+                
+                clientData = data;
+                renderTable();
+                updateStats();
+                document.getElementById('lastUpdate').textContent = formatTimestamp(new Date());
+                setLoading(false);
+            } catch (error) {
+                showError(error.message);
+                setLoading(false);
+            }
+        }
+
+        function renderTable() {
+            const tableBody = document.getElementById('tableBody');
+            
+            if (clientData.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📭</div>
+                                <p>No clients found</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let filtered = clientData.filter(info => {
+                const search = document.getElementById('searchInput').value.toLowerCase();
+                if (!search) return true;
+                return info.hostname.toLowerCase().includes(search) ||
+                       info.internal_ip.includes(search) ||
+                       (info.external_ip && info.external_ip.includes(search));
+            });
+
+            // Sort
+            if (sortColumn) {
+                filtered.sort((a, b) => {
+                    let aVal = a[sortColumn];
+                    let bVal = b[sortColumn];
+                    
+                    if (typeof aVal === 'string') {
+                        aVal = aVal.toLowerCase();
+                        bVal = bVal.toLowerCase();
+                    }
+                    
+                    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            tableBody.innerHTML = filtered.map(info => {
+                const isAlive = info.is_alive !== false;
+                const isAdmin = info.admin === true || info.admin === 'true' || info.admin === '1';
+                
+                return `
+                    <tr class="${!isAlive ? 'offline' : ''}">
+                        <td><strong>${info.hostname}</strong></td>
+                        <td><code>${info.internal_ip}</code></td>
+                        <td><code>${info.external_ip || 'N/A'}</code></td>
+                        <td>${info.current_user}</td>
+                        <td>${info.os || 'N/A'}</td>
+                        <td>
+                            ${isAdmin ? '<span class="status-badge admin-badge">♔ ADMIN</span>' : 'User'}
+                        </td>
+                        <td title="${formatTimestamp(info.last_ping)}">
+                            <span class="status-badge ${isAlive ? 'status-online' : 'status-offline'}">
+                                ${timeAgo(info.last_ping)}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="more.html#${info.id}">View Details →</a>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            const count = clientData.length;
+            const online = clientData.filter(v => v.is_alive !== false).length;
+            document.getElementById('clientCount').textContent = 
+                `${count} client${count !== 1 ? 's' : ''} (${online} online)`;
+        }
+
+        function manualRefresh() {
+            document.getElementById('refreshBtn').disabled = true;
+            fetchClientData().finally(() => {
+                document.getElementById('refreshBtn').disabled = false;
+            });
+        }
+
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const btn = document.getElementById('autoToggleBtn');
+            
+            if (autoRefreshEnabled) {
+                btn.textContent = '⏸ Pause Auto-Refresh';
+                startAutoRefresh();
+            } else {
+                btn.textContent = '▶ Resume Auto-Refresh';
+                clearInterval(refreshInterval);
+            }
+        }
+
+        function startAutoRefresh() {
+            const interval = parseInt(document.getElementById('refreshRate').value) * 1000;
+            clearInterval(refreshInterval);
+            
+            refreshInterval = setInterval(() => {
+                if (autoRefreshEnabled) {
+                    fetchClientData();
+                }
+            }, interval);
+        }
+
+        function setupSorting() {
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', function() {
+                    const column = this.textContent.trim().toLowerCase()
+                        .replace(/\s+/g, '_')
+                        .replace('_↑', '').replace('_↓', '').replace('_↕', '');
+                    
+                    const columnMap = {
+                        'hostname': 'hostname',
+                        'internal_ip': 'internal_ip',
+                        'external_ip': 'external_ip',
+                        'current_user': 'current_user',
+                        'os': 'os',
+                        'admin': 'admin',
+                        'last_ping': 'last_ping'
+                    };
+                    
+                    const newColumn = columnMap[column];
+                    if (newColumn) {
+                        if (sortColumn === newColumn) {
+                            sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            sortColumn = newColumn;
+                            sortOrder = 'asc';
+                        }
+                        
+                        document.querySelectorAll('th.sortable').forEach(t => {
+                            t.classList.remove('sort-asc', 'sort-desc');
+                        });
+                        
+                        if (sortOrder === 'asc') {
+                            this.classList.add('sort-asc');
+                        } else {
+                            this.classList.add('sort-desc');
+                        }
+                        
+                        renderTable();
+                    }
+                });
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', renderTable);
+        document.getElementById('refreshRate').addEventListener('change', startAutoRefresh);
+
+        // Initial load
+        setupSorting();
+        fetchClientData();
+        startAutoRefresh();
+    </script>
+</body>
+</html>

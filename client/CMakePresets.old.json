@@ -1,0 +1,70 @@
+{
+  "version": 5,
+  "configurePresets": [
+    {
+      "name": "windows-vcpkg",
+      "displayName": "Windows (vcpkg)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/remote-access-tool/out/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_C_STANDARD": "11",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
+      "name": "msvc-x64-debug",
+      "displayName": "MSVC x64 Debug (vcpkg)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/msvc-x64-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static"
+      }
+    },
+    {
+      "name": "msvc-x64-release",
+      "displayName": "MSVC x64 Release (vcpkg)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/msvc-x64-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static"
+      }
+    },
+    {
+      "name": "msvc-win32-debug",
+      "displayName": "MSVC Win32 Debug (vcpkg)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/msvc-win32-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "VCPKG_TARGET_TRIPLET": "x86-windows-static"
+      }
+    },
+    {
+      "name": "msvc-win32-release",
+      "displayName": "MSVC Win32 Release (vcpkg)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/msvc-win32-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "VCPKG_TARGET_TRIPLET": "x86-windows-static"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "build-msvc-x64-debug", "configurePreset": "msvc-x64-debug" },
+    { "name": "build-msvc-x64-release", "configurePreset": "msvc-x64-release" },
+    { "name": "build-msvc-win32-debug", "configurePreset": "msvc-win32-debug" },
+    { "name": "build-msvc-win32-release", "configurePreset": "msvc-win32-release" }
+  ]
+}

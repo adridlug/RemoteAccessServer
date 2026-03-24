@@ -1,0 +1,115 @@
+################################################################################
+# C / C++ + Visual Studio 2022 (.sln, .vcxproj) .gitignore
+################################################################################
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+.vs/
+
+# Visual Studio build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+
+# Build artifacts
+*.obj
+*.o
+*.lo
+*.a
+*.lib
+*.dll
+*.exe
+*.exp
+*.pdb
+*.idb
+*.ilk
+*.ipdb
+*.iobj
+*.pch
+*.res
+*.tlog
+*.tmp
+
+# C/C++ intermediate/dependency files
+*.d
+*.dep
+*.sbr
+*.bsc
+*.ncb
+*.pch
+*.gch
+
+# Visual Studio / MSBuild output folders
+Debug/
+Release/
+DebugPublic/
+ReleasePublic/
+*_i.c
+*_p.c
+*.ilk
+*.meta
+*.iobj
+*.ipdb
+
+# Visual Studio cache/options
+*.aps
+*.ncb
+*.opendb
+*.db
+*.db-shm
+*.db-wal
+
+# IntelliSense / browsing database
+*.ipch
+*.sdf
+
+# CMake (Visual Studio CMake integration)
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+out/
+build/
+_build/
+CMakeSettings.json.user
+
+# NuGet (if used)
+packages/
+*.nupkg
+*.snupkg
+.nuget/
+# (Keep NuGet config files)
+!NuGet.Config
+!nuget.config
+
+# Test results
+TestResults/
+*.trx
+
+# Windows / OS cruft
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+
+# VS Code (if you sometimes open the folder there)
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+################################################################################
+# Optional: ignore generated documentation (uncomment if applicable)
+################################################################################
+# Doxygen/
+# docs/_build/

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Control Panel - Client Details</title>
+    <link rel="stylesheet" href="dashboard.css?v=20260315">
+</head>
+<body>
+    <div class="container">
+        <header class="panel">
+            <h1>🎯 Client Control Panel - Client Details</h1>
+            <p class="subtitle">Queue and monitor tunnel commands for a single client.</p>
+        </header>
+
+        <form action="setinfo.cgi" method="POST" id="opensshtunnel"></form>
+        <form action="setinfo.cgi" method="POST" id="closesshtunnel"></form>
+        <form action="setinfo.cgi" method="POST" id="opentcptunnel"></form>
+        <form action="setinfo.cgi" method="POST" id="closetcptunnel"></form>
+        <form action="setinfo.cgi" method="POST" id="opendynamictunnel"></form>
+        <form action="setinfo.cgi" method="POST" id="closedynamictunnel"></form>
+        <form action="releaseinfos.cgi" method="POST" id="releaseform"></form>
+
+        <input type="hidden" id="id_input_opensshtunnel" form="opensshtunnel" name="clientid" value="1">
+        <input type="hidden" id="id_input_closesshtunnel" form="closesshtunnel" name="clientid" value="1">
+        <input type="hidden" id="id_input_opentcptunnel" form="opentcptunnel" name="clientid" value="1">
+        <input type="hidden" id="id_input_closetcptunnel" form="closetcptunnel" name="clientid" value="1">
+        <input type="hidden" id="id_input_opendynamictunnel" form="opendynamictunnel" name="clientid" value="1">
+        <input type="hidden" id="id_input_closedynamictunnel" form="closedynamictunnel" name="clientid" value="1">
+        <input type="hidden" id="id_input_releaseform" form="releaseform" name="clientid" value="1">
+
+        <section class="panel">
+            <h2>Available Commands</h2>
+            <div class="table-wrapper">
+                <table>
+                    <tr>
+                        <th>Command</th>
+                        <th>Parameters</th>
+                        <th>Queue</th>
+                    </tr>
+                    <tr>
+                        <td>Open SSH tunnel</td>
+                        <td>
+                            Local Port <input type="text" name="L" form="opensshtunnel">
+                            Remote Port <input type="text" name="R" form="opensshtunnel">
+                            <input type="hidden" form="opensshtunnel" name="cmd" value="opensshtunnel">
+                        </td>
+                        <td class="actions-cell"><input type="submit" value="Queue" form="opensshtunnel"></td>
+                    </tr>
+                    <tr>
+                        <td>Close SSH tunnel</td>
+                        <td>
+                            <input type="hidden" form="closesshtunnel" name="cmd" value="closesshtunnel">
+                            No parameters required
+                        </td>
+                        <td class="actions-cell"><input type="submit" value="Queue" form="closesshtunnel"></td>
+                    </tr>
+                    <tr>
+                        <td>Open TCP tunnel</td>
+                        <td>
+                            Local Port <input type="text" name="L" form="opentcptunnel">
+                            Remote Port <input type="text" name="R" form="opentcptunnel">
+                            <input type="hidden" form="opentcptunnel" name="cmd" value="opentcptunnel">
+                        </td>
+                        <td class="actions-cell"><input type="submit" value="Queue" form="opentcptunnel"></td>
+                    </tr>
+                    <tr>
+                        <td>Close TCP tunnel</td>
+                        <td>
+                            <input type="hidden" form="closetcptunnel" name="cmd" value="closetcptunnel">
+                            No parameters required
+                        </td>
+                        <td class="actions-cell"><input type="submit" value="Queue" form="closetcptunnel"></td>
+                    </tr>
+                    <tr>
+                        <td>Open dynamic tunnel</td>
+                        <td>
+                            Local Port <input type="text" name="L" form="opendynamictunnel">
+                            Remote Port <input type="text" name="R" form="opendynamictunnel">
+                            <input type="hidden" form="opendynamictunnel" name="cmd" value="opendynamictunnel">
+                        </td>
+                        <td class="actions-cell"><input type="submit" value="Queue" form="opendynamictunnel"></td>
+                    </tr>
+                    <tr>
+                        <td>Close dynamic tunnel</td>
+                        <td>
+                            <input type="hidden" form="closedynamictunnel" name="cmd" value="closedynamictunnel">
+                            No parameters required
+                        </td>
+                        <td class="actions-cell"><input type="submit" value="Queue" form="closedynamictunnel"></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="page-actions">
+                <input type="submit" form="releaseform" value="Release Queued Commands">
+            </div>
+        </section>
+
+        <div id="command-sections" class="command-sections"></div>
+    </div>
+
+    <script>
+        const id = window.location.hash.substring(1);
+
+        setIdOnInputFields(id);
+        setupAsyncForms();
+
+        setInterval(() => {
+            fetch("/getmore.cgi?clientid=" + id)
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    return [];
+                })
+                .then(commands => {
+                    const queuedCommands = commands.filter(cmd => cmd.is_queued === true);
+                    createTable("Queued commands", queuedCommands, true);
+                    createTable("Released commands", commands.filter(cmd => cmd.is_released === true), false);
+                    createTable("Executed commands", commands.filter(cmd => cmd.is_executed === true), false);
+                });
+        }, 1000);
+
+        function setIdOnInputFields(clientId) {
+            [
+                "id_input_opensshtunnel",
+                "id_input_closesshtunnel",
+                "id_input_opentcptunnel",
+                "id_input_closetcptunnel",
+                "id_input_opendynamictunnel",
+                "id_input_closedynamictunnel",
+                "id_input_releaseform"
+            ].forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.value = clientId;
+                }
+            });
+        }
+
+        function setupAsyncForms() {
+            document.querySelectorAll('form[action="setinfo.cgi"], form[action="releaseinfos.cgi"], form[action="deleteinfos.cgi"]').forEach(form => {
+                form.addEventListener("submit", event => {
+                    event.preventDefault();
+
+                    fetch(form.action, {
+                        method: "POST",
+                        body: new FormData(form)
+                    }).catch(error => {
+                        console.error("Request failed:", error);
+                    });
+                });
+            });
+        }
+
+        function createTable(title, commands, includeRelease) {
+            const root = document.getElementById("command-sections");
+            let container = document.getElementById(title);
+
+            if (container != null) {
+                container.remove();
+            }
+
+            if (commands == null || commands.length === 0) {
+                return;
+            }
+
+            container = document.createElement("section");
+            container.className = "panel";
+            container.id = title;
+            root.appendChild(container);
+
+            const sectionTitle = document.createElement("h2");
+            sectionTitle.className = "section-title";
+            sectionTitle.textContent = title;
+            container.appendChild(sectionTitle);
+
+            const tableWrapper = document.createElement("div");
+            tableWrapper.className = "table-wrapper";
+            container.appendChild(tableWrapper);
+
+            const table = document.createElement("table");
+            tableWrapper.appendChild(table);
+
+            const headerRow = table.insertRow();
+            ["Command", "Local port", "Remote port", "Delete"].forEach(col => {
+                const th = document.createElement("th");
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+
+            commands.forEach(command => {
+                const row = table.insertRow();
+
+                const ccmd = row.insertCell(0);
+                ccmd.textContent = command.command;
+
+                const clport = row.insertCell(1);
+                clport.textContent = command.local_port;
+
+                const rport = row.insertCell(2);
+                rport.textContent = command.remote_port;
+
+                const cdel = row.insertCell(3);
+                cdel.className = "actions-cell";
+                cdel.innerHTML = "<form action=\"deleteinfos.cgi\" method=\"POST\"><input type=\"hidden\" name=\"clientid\" value=\"" + command.client_id + "\"><input type=\"hidden\" name=\"cmdid\" value=\"" + command.id + "\"><input type=\"submit\" value=\"Delete\"></form>";
+            });
+
+            if (includeRelease) {
+                const actions = document.createElement("div");
+                actions.className = "page-actions";
+                actions.innerHTML = "<input type=\"submit\" form=\"releaseform\" value=\"Release\">";
+                container.appendChild(actions);
+            }
+        }
+    </script>
+</body>
+</html>

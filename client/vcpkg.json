@@ -1,0 +1,9 @@
+{
+  "name": "remote-access-client",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "libssh",
+    "openssl",
+    "pthreads"
+  ]
+}
