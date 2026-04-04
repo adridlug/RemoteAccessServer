@@ -22,12 +22,12 @@ target_include_directories(remote-access-client PRIVATE
 
 find_package(libssh CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(Threads REQUIRED)
+find_package(PThreads4W REQUIRED)
 
 target_link_libraries(remote-access-client PRIVATE
   ssh
+  PThreads4W::PThreads4W
   OpenSSL::Crypto
-  Threads::Threads
   ws2_32
   user32
   crypt32
@@ -38,6 +38,4 @@ target_link_libraries(remote-access-client PRIVATE
   wininet
 )
 
-if (MSVC)
-  target_compile_options(remote-access-client PRIVATE /W4)
-endif()
+target_compile_options(remote-access-client PRIVATE /W4)

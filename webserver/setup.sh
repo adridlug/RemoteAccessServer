@@ -386,6 +386,7 @@ fi
 # Copy local_server_key and local_server_key.pub to ../ssh_keys
 SSH_KEYS_DIR="$SCRIPT_DIR/../ssh_keys"
 mkdir -p "$SSH_KEYS_DIR"
+chmod 700 "$SSH_KEYS_DIR"
 cp "$SCRIPT_DIR/local_server_key" "$SSH_KEYS_DIR/"
 cp "$SCRIPT_DIR/local_server_key.pub" "$SSH_KEYS_DIR/"
 cp "$SCRIPT_DIR/key" "$SSH_KEYS_DIR/"
@@ -393,9 +394,65 @@ chmod 600 "$SSH_KEYS_DIR/local_server_key"
 chmod 644 "$SSH_KEYS_DIR/local_server_key.pub"
 log_success "Copied local_server_key and local_server_key.pub to $SSH_KEYS_DIR"
 
+# Generate a dedicated host_key pair in webserver dir
+log_info "Generating host key pair (host_key)..."
+if ssh-keygen -t ed25519 -a 100 -C "host_key@$(hostname)" -f "$SCRIPT_DIR/host_key" -N ""; then
+    log_success "Generated host_key and host_key.pub"
+else
+    log_error "host_key pair generation failed"
+    exit 1
+fi
+
+# Add host_key.pub to the invoking user's known_hosts
+CURRENT_USER="${SUDO_USER:-$USER}"
+CURRENT_USER_HOME="$(getent passwd "$CURRENT_USER" | cut -d: -f6)"
+if [ -z "$CURRENT_USER_HOME" ]; then
+    log_error "Could not determine home directory for user '$CURRENT_USER'"
+    exit 1
+fi
+
+KNOWN_HOSTS_DIR="$CURRENT_USER_HOME/.ssh"
+KNOWN_HOSTS_FILE="$KNOWN_HOSTS_DIR/known_hosts"
+mkdir -p "$KNOWN_HOSTS_DIR"
+touch "$KNOWN_HOSTS_FILE"
+
+HOSTS_LIST="localhost,127.0.0.1,$(hostname)"
+SERVER_IP_FOR_KNOWN_HOSTS="$(hostname -I 2>/dev/null | awk '{print $1}')"
+if [ -n "$SERVER_IP_FOR_KNOWN_HOSTS" ]; then
+    HOSTS_LIST="$HOSTS_LIST,$SERVER_IP_FOR_KNOWN_HOSTS"
+fi
+
+PUBKEY_TYPE_AND_DATA="$(awk '{print $1" "$2}' "$SCRIPT_DIR/host_key.pub")"
+KNOWN_HOSTS_ENTRY="$HOSTS_LIST $PUBKEY_TYPE_AND_DATA"
+
+if ! grep -Fqx "$KNOWN_HOSTS_ENTRY" "$KNOWN_HOSTS_FILE"; then
+    echo "$KNOWN_HOSTS_ENTRY" >> "$KNOWN_HOSTS_FILE"
+    log_success "Added host_key.pub to $KNOWN_HOSTS_FILE"
+else
+    log_info "host_key entry already exists in $KNOWN_HOSTS_FILE"
+fi
+
+chmod 700 "$KNOWN_HOSTS_DIR"
+chmod 600 "$KNOWN_HOSTS_FILE"
+chown "$CURRENT_USER:$CURRENT_USER" "$KNOWN_HOSTS_DIR" "$KNOWN_HOSTS_FILE"
+
+# Ensure ssh_keys and local_server_key are usable by current user with ssh -i
+chown "$CURRENT_USER:$CURRENT_USER" "$SSH_KEYS_DIR"
+chown "$CURRENT_USER:$CURRENT_USER" "$SSH_KEYS_DIR/local_server_key" "$SSH_KEYS_DIR/local_server_key.pub"
+chmod 700 "$SSH_KEYS_DIR"
+chmod 600 "$SSH_KEYS_DIR/local_server_key"
+chmod 644 "$SSH_KEYS_DIR/local_server_key.pub"
+
+# Move host_key pair to ssh_keys and keep it out of webserver dir
+mv "$SCRIPT_DIR/host_key" "$SSH_KEYS_DIR/host_key"
+mv "$SCRIPT_DIR/host_key.pub" "$SSH_KEYS_DIR/host_key.pub"
+chmod 600 "$SSH_KEYS_DIR/host_key"
+chmod 644 "$SSH_KEYS_DIR/host_key.pub"
+log_success "Moved host_key and host_key.pub to $SSH_KEYS_DIR"
+
 # Remove key pairs from webserver directory
-rm -f "$SCRIPT_DIR/key" "$SCRIPT_DIR/key.pub" "$SCRIPT_DIR/local_server_key" "$SCRIPT_DIR/local_server_key.pub"
-log_success "Removed key, key.pub, local_server_key, and local_server_key.pub from $SCRIPT_DIR"
+rm -f "$SCRIPT_DIR/key" "$SCRIPT_DIR/key.pub" "$SCRIPT_DIR/local_server_key" "$SCRIPT_DIR/local_server_key.pub" "$SCRIPT_DIR/host_key" "$SCRIPT_DIR/host_key.pub"
+log_success "Removed key, key.pub, local_server_key, local_server_key.pub, host_key, and host_key.pub from $SCRIPT_DIR"
 
 
 

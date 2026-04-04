@@ -4,7 +4,7 @@
 #include <libssh/callbacks.h>
 #include <windows.h>
 #include <winternl.h>
-//#include <pthread.h>
+#include <pthread.h>
 
 #include "helpers.h"
 #include "ssh_server_impl.h"
@@ -379,7 +379,7 @@ DWORD WINAPI start_ssh_server(LPVOID params)
 {
     struct ssh_server_options* options = (struct ssh_server_options*)params;
 
-    char* private_ssh_key_base64 =[priv_key_goes_here]
+    char keyPath[MAX_PATH];
     int rc;
     ssh_bind sshbind;
     ssh_session session;
@@ -392,12 +392,19 @@ DWORD WINAPI start_ssh_server(LPVOID params)
         return -1;
     }
 
-    ssh_key key;
-    ssh_pki_import_privkey_base64(private_ssh_key_base64, NULL, NULL, NULL, &key);
+    if (get_key_path_from_exe_dir("host_key", keyPath) != 0) {
+        return -1;
+    }
 
     ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_BINDADDR, "127.0.0.1");
     ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_BINDPORT, &port);
-    ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_IMPORT_KEY, key);
+    ssh_bind_options_set(sshbind, SSH_BIND_OPTIONS_HOSTKEY, keyPath);
+    
+    rc = ssh_bind_listen(sshbind);
+
+    if (rc < 0) {
+        return -1;
+    }
 
     rc = ssh_bind_listen(sshbind);
 
