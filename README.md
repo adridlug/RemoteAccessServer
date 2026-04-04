@@ -99,19 +99,12 @@ After installation, access the web server at: [http://127.0.0.1:8080](http://127
 
 ### 2. Compile and Run Client (Windows)
 
-**Build the client using CMake and MSVC:**
-
-```sh
-cd client
-cmake --preset mingw-x64-debug
-cmake --build --preset build-mingw-x64-debug
-```
-
-The executable will be in `client/build/msvc-x64-debug`.
+TODO
 
 **SSH Key Requirements:**
+- `host_key`: ssh private key acting as the host key of the local SSH server. 
 - `key`: SSH private key for connecting to the remote SSH server.
-- `local_server_key.pub`: Public key for authenticating to the remote web server.
+- `local_server_key.pub`: Public key of the local SSH server.
 
 **Run the client:**
 
