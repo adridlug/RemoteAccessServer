@@ -337,11 +337,12 @@ if [ -n "$SCHEMA_FILE" ]; then
     # Import schema
     echo ""
     log_info "Importing database schema..."
-    if sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -f "$SCHEMA_FILE" > /dev/null 2>&1; then
+    # Feed schema through stdin so postgres does not need traverse permissions on SCRIPT_DIR.
+    if sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" > /dev/null 2>&1 < "$SCHEMA_FILE"; then
         log_success "Schema imported with postgres user"
     else
         log_error "Schema import failed with postgres user"
-        log_info "You may need to import manually: sudo -u postgres psql -d $DB_NAME -f $SCHEMA_FILE"
+        log_info "You may need to import manually: sudo -u postgres psql -d $DB_NAME < $SCHEMA_FILE"
     fi
     
     # Test connection
