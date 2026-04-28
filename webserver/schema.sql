@@ -26,6 +26,7 @@ SET default_table_access_method = heap;
 
 DROP TABLE IF EXISTS public.commands CASCADE;
 DROP TABLE IF EXISTS public.clients CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
 
 --
 -- Name: commands; Type: TABLE; Schema: public; Owner: postgres
@@ -91,6 +92,19 @@ CREATE TABLE public.clients (
 ALTER TABLE public.clients OWNER TO remote_admin_db_user;
 
 --
+-- Name: users; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.users (
+    username character varying(100) NOT NULL,
+    passwordhash character(64) NOT NULL,
+    salt character(64) NOT NULL
+);
+
+
+ALTER TABLE public.users OWNER TO remote_admin_db_user;
+
+--
 -- Name: clients_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -143,6 +157,14 @@ ALTER TABLE ONLY public.clients
 
 
 --
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (username);
+
+
+--
 -- Name: commands commands_clients_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -169,6 +191,13 @@ GRANT SELECT,USAGE ON SEQUENCE public.commands_id_seq TO remote_admin_db_user;
 --
 
 GRANT SELECT,INSERT,UPDATE ON TABLE public.clients TO remote_admin_db_user;
+
+
+--
+-- Name: TABLE users; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,INSERT,UPDATE ON TABLE public.users TO remote_admin_db_user;
 
 
 --

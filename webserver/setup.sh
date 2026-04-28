@@ -7,6 +7,10 @@ set -e  # Exit on any error
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEB_ROOT="/var/www/remote-admin"
 VENV_DIR="$WEB_ROOT/venv"
+SSL_DIR="/etc/lighttpd/ssl"
+SSL_KEY_FILE="$SSL_DIR/remote-admin.key"
+SSL_CERT_FILE="$SSL_DIR/remote-admin.crt"
+SSL_PEM_FILE="$SSL_DIR/remote-admin.pem"
 
 echo "=========================================="
 echo "   Remote Admin Web Server Setup Script"
@@ -46,15 +50,40 @@ echo ""
 log_info "Creating directories..."
 mkdir -p "$WEB_ROOT"
 mkdir -p /var/log/lighttpd
+mkdir -p "$SSL_DIR"
 chmod 750 /var/log/lighttpd
+chmod 750 "$SSL_DIR"
 log_success "Directories created"
 
 # Update and install packages
 echo ""
 log_info "Installing packages..."
 apt update -qq
-apt install -y lighttpd python3 python3-pip python3-venv postgresql postgresql-contrib ssh > /dev/null 2>&1
+apt install -y lighttpd lighttpd-mod-openssl openssl python3 python3-pip python3-venv postgresql postgresql-contrib ssh > /dev/null 2>&1
 log_success "Packages installed"
+
+# Generate self-signed TLS certificate for HTTPS
+echo ""
+log_info "Generating self-signed TLS certificate..."
+TLS_CN="$(hostname)"
+TLS_SAN="DNS:localhost,DNS:$TLS_CN,IP:127.0.0.1"
+TLS_PRIMARY_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+if [ -n "$TLS_PRIMARY_IP" ]; then
+    TLS_SAN="$TLS_SAN,IP:$TLS_PRIMARY_IP"
+fi
+
+openssl req -x509 -newkey rsa:4096 -sha256 -days 365 \
+    -nodes \
+    -keyout "$SSL_KEY_FILE" \
+    -out "$SSL_CERT_FILE" \
+    -subj "/C=US/ST=Local/L=Local/O=RemoteAdmin/CN=$TLS_CN" \
+    -addext "subjectAltName=$TLS_SAN" > /dev/null 2>&1
+cat "$SSL_CERT_FILE" "$SSL_KEY_FILE" > "$SSL_PEM_FILE"
+cp "$SSL_CERT_FILE" "$WEB_ROOT/server.crt"
+chmod 640 "$SSL_KEY_FILE"
+chmod 640 "$SSL_PEM_FILE"
+chmod 644 "$SSL_CERT_FILE" "$WEB_ROOT/server.crt"
+log_success "TLS certificate and PEM bundle generated and copied to $WEB_ROOT/server.crt"
 
 # Create virtual environment
 echo ""
@@ -144,6 +173,7 @@ echo ""
 log_info "Setting file permissions..."
 chown -R www-data:www-data "$WEB_ROOT"
 chown -R www-data:www-data /var/log/lighttpd
+chown root:www-data "$SSL_KEY_FILE" "$SSL_CERT_FILE" "$SSL_PEM_FILE"
 touch /var/log/lighttpd/error.log
 touch /var/log/lighttpd/access.log
 chmod 644 /var/log/lighttpd/error.log
@@ -340,6 +370,42 @@ if [ -n "$SCHEMA_FILE" ]; then
     # Feed schema through stdin so postgres does not need traverse permissions on SCRIPT_DIR.
     if sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" > /dev/null 2>&1 < "$SCHEMA_FILE"; then
         log_success "Schema imported with postgres user"
+
+        # Create default application login user (operator)
+        OPERATOR_USERNAME="${WEB_OPERATOR_USER:-operator}"
+        OPERATOR_PASSWORD="${WEB_OPERATOR_PASS:-operator}"
+
+        if [[ ! "$OPERATOR_USERNAME" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
+            log_error "WEB_OPERATOR_USER contains invalid characters"
+            exit 1
+        fi
+
+        log_info "Ensuring default web user exists: $OPERATOR_USERNAME"
+        if sudo -u postgres psql -tAc "SELECT 1 FROM public.users WHERE username = '$OPERATOR_USERNAME'" -d "$DB_NAME" | grep -q 1; then
+            log_info "Web user '$OPERATOR_USERNAME' already exists"
+        else
+            OPERATOR_SALT="$(openssl rand -hex 32)"
+            OPERATOR_PASSWORD_HASH="$(printf "%s%s" "$OPERATOR_PASSWORD" "$OPERATOR_SALT" | openssl dgst -sha256 | awk '{print $2}')"
+
+            if [ -z "$OPERATOR_PASSWORD_HASH" ]; then
+                log_error "Failed to generate password hash for default web user"
+                exit 1
+            fi
+
+            sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" \
+                -v app_user="$OPERATOR_USERNAME" \
+                -v app_hash="$OPERATOR_PASSWORD_HASH" \
+                -v app_salt="$OPERATOR_SALT" \
+                > /dev/null 2>&1 <<'PSQL'
+INSERT INTO public.users (username, passwordhash, salt) VALUES (:'app_user', :'app_hash', :'app_salt');
+PSQL
+            if [ $? -eq 0 ]; then
+                log_success "Created default web user '$OPERATOR_USERNAME'"
+            else
+                log_error "Failed to create default web user '$OPERATOR_USERNAME'"
+                exit 1
+            fi
+        fi
     else
         log_error "Schema import failed with postgres user"
         log_info "You may need to import manually: sudo -u postgres psql -d $DB_NAME < $SCHEMA_FILE"
@@ -361,6 +427,12 @@ if [ -n "$SCHEMA_FILE" ]; then
     echo "  Database: $DB_NAME"
     echo "  User: $DB_USER"
     echo "  Password: (provided at runtime)"
+    echo "  Default web login user: ${WEB_OPERATOR_USER:-operator}"
+    if [ -n "$WEB_OPERATOR_PASS" ]; then
+        echo "  Default web login password: (from WEB_OPERATOR_PASS environment variable)"
+    else
+        echo "  Default web login password: operator"
+    fi
     echo "  Host: localhost"
     echo ""
 else
@@ -466,8 +538,9 @@ echo ""
 
 SERVER_IP=$(hostname -I | awk '{print $1}')
 echo "Server Information:"
-echo "  URL: http://$SERVER_IP:8080/index.html"
-echo "  API: http://$SERVER_IP:8080/getinfos.cgi"
+echo "  URL: https://$SERVER_IP/index.html"
+echo "  API: https://$SERVER_IP/getinfos.cgi"
+echo "  Fallback URL: http://$SERVER_IP:8080/login.html"
 echo ""
 echo "Configuration:"
 echo "  Web Root: $WEB_ROOT"
@@ -482,6 +555,8 @@ echo "  Status:        sudo systemctl status lighttpd"
 echo ""
 echo "Next steps:"
 echo "  1. CGI DB config file: $WEB_ROOT/db.conf"
-echo "  2. Test connection: curl http://localhost:8080/getinfos.cgi"
-echo "  3. Deploy remote access clients"
+echo "  2. TLS certificate: $WEB_ROOT/server.crt"
+echo "  3. Test HTTPS: curl -k https://localhost/getinfos.cgi"
+echo "  4. HTTP fallback: curl http://localhost:8080/login.html"
+echo "  5. Deploy remote access clients"
 echo ""

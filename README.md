@@ -19,7 +19,7 @@ This project provides a **Remote Access Server** with a web-based control panel 
 
 - **Clients Page:** View all clients that have communicated with the server, including hostname and internal IP.
 - **Client Commands:** Queue and release commands for each client. Commands must be released before execution. Status updates after execution.
-- **Web Interface:** Access via [http://localhost:8080](http://localhost:8080)
+- **Web Interface:** Access via [https://localhost](https://localhost)
 
 ---
 
@@ -91,7 +91,7 @@ sudo chmod +x webserver/setup.sh
 sudo webserver/setup.sh
 ```
 
-After installation, access the web server at: [http://127.0.0.1:8080](http://127.0.0.1:8080)
+After installation, access the web server at: [https://127.0.0.1](https://127.0.0.1)
 
 **Note:** The required SSH keys for running `client.exe` will be automatically copied to the `ssh_keys` folder during web server installation.
 
