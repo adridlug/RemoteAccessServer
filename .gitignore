@@ -108,6 +108,16 @@ $RECYCLE.BIN/
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# keys and certificates
+host_key
+host_key.pub
+key
+local_server_key
+local_server_key.pub
+remote-admin.key
+remote-admin.pub
+remote-admin.crt
+
 ################################################################################
 # Optional: ignore generated documentation (uncomment if applicable)
 ################################################################################
