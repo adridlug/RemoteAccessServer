@@ -4,8 +4,9 @@ from xml.etree import ElementTree
 import psycopg2
 import sys
 import logging
-
 from db_connection import get_db_connection
+from session_helper import get_session_cookie, get_session_username
+
 
 # Configure logging to file
 logging.basicConfig(
@@ -63,6 +64,13 @@ def commands_to_xml_string(commands):
 
 
 try:
+    username = get_session_username(get_session_cookie())
+    
+    if not username:
+        print("Status: 401 Unauthorized")
+        print()
+        exit(0)
+
     # Print HTTP headers first
     print("Content-Type: application/xml\n")
     

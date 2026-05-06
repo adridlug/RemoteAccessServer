@@ -25,6 +25,7 @@ SET default_table_access_method = heap;
 --
 
 DROP TABLE IF EXISTS public.commands CASCADE;
+DROP TABLE IF EXISTS public.sessions CASCADE;
 DROP TABLE IF EXISTS public.clients CASCADE;
 DROP TABLE IF EXISTS public.users CASCADE;
 
@@ -96,13 +97,29 @@ ALTER TABLE public.clients OWNER TO remote_admin_db_user;
 --
 
 CREATE TABLE public.users (
-    username character varying(100) NOT NULL,
+    username character varying(100) NOT NULL PRIMARY KEY,
     passwordhash character(64) NOT NULL,
     salt character(64) NOT NULL
 );
 
 
 ALTER TABLE public.users OWNER TO remote_admin_db_user;
+
+--
+-- Name: sessions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.sessions (
+    session_id character varying(64) NOT NULL PRIMARY KEY,
+    username character varying(100) NOT NULL,
+    created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+    expires_at timestamp NOT NULL,
+    CONSTRAINT fk_username FOREIGN KEY (username) REFERENCES public.users(username) ON DELETE CASCADE
+);
+
+ALTER TABLE public.sessions OWNER TO remote_admin_db_user;
+
+CREATE INDEX idx_sessions_expires_at ON public.sessions(expires_at);
 
 --
 -- Name: clients_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -154,14 +171,6 @@ ALTER TABLE ONLY public.commands
 
 ALTER TABLE ONLY public.clients
     ADD CONSTRAINT clients_pkey PRIMARY KEY (id);
-
-
---
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_pkey PRIMARY KEY (username);
 
 
 --

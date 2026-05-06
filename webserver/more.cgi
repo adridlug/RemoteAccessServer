@@ -3,18 +3,18 @@ import os
 from session_helper import get_session_cookie, get_session_username
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGIN_HTML = os.path.join(SCRIPT_DIR, "login.html")
+MORE_HTML = os.path.join(SCRIPT_DIR, "more.html")
 
 try:
     session_id = get_session_cookie()
     username = get_session_username(session_id)
-    if username:
+    if not username:
         print("Status: 302 Found")
-        print("Location: /index.cgi")
+        print("Location: /login.cgi")
         print()
         exit(0)
 
-    with open(LOGIN_HTML, "r", encoding="utf-8") as f:
+    with open(MORE_HTML, "r", encoding="utf-8") as f:
         html = f.read()
 
     print("Status: 200 OK")
