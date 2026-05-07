@@ -1,4 +1,4 @@
-import db_connection
+import webserver.core.db_connection as db_connection
 from datetime import datetime, timedelta
 import os
 import secrets
@@ -47,26 +47,22 @@ def get_session_username(session_id):
         result = cur.fetchone()
 
         if not result:
-            cur.close()
-            conn.close()
             return None
 
         username, expires_at = result
         if expires_at <= datetime.utcnow():
-            # Delete expired session from DB; the browser cookie will be rejected on
-            # subsequent requests since the server-side record no longer exists.
             cur.execute("DELETE FROM public.sessions WHERE session_id = %s", (session_id,))
             conn.commit()
-            cur.close()
-            conn.close()
             return None
-
-        cur.close()
-        conn.close()
 
         return username
     except Exception:
         return None
+    finally:        
+        if cur is not None:
+            cur.close() 
+        if conn is not None:
+            conn.close()
 
 
 def get_session_cookie():

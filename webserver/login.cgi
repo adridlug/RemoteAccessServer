@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import os
-from session_helper import get_session_cookie, get_session_username
+from core.session_helper import get_session_cookie, get_session_username
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGIN_HTML = os.path.join(SCRIPT_DIR, "login.html")

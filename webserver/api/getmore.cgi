@@ -4,8 +4,8 @@ import sys
 import xml.etree.ElementTree as ET
 import psycopg2
 import json
-from db_connection import get_db_connection
-from session_helper import get_session_cookie, get_session_username
+from core.db_connection import get_db_connection
+from core.session_helper import get_session_cookie, get_session_username
 
 try:
     username = get_session_username(get_session_cookie())
@@ -46,6 +46,7 @@ try:
         result.append(data)
 
     json_string = json.dumps(result)  # Using indent for readable formatting
+    print("Status: 200 OK")
     print("Content-Type: application/json")  # Set the content type to JSON
     print()  # End of headers
     print(json_string)
