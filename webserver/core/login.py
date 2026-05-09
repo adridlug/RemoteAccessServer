@@ -1,7 +1,7 @@
 import hashlib
 import psycopg2
 
-from webserver.core.db_connection import get_db_connection
+from .db_connection import get_db_connection
 
 
 def login(username: str, password: str) -> bool:

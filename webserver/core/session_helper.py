@@ -1,4 +1,4 @@
-from db_connection import get_db_connection
+from .db_connection import get_db_connection
 from datetime import datetime, timedelta
 import os
 import secrets

@@ -1,9 +1,11 @@
 #!/usr/bin/python
 import cgi, cgitb
 import sys
+import os
 import xml.etree.ElementTree as ET
 import psycopg2
 import json
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.db_connection import get_db_connection
 from core.session_helper import get_session_cookie, get_session_username
 

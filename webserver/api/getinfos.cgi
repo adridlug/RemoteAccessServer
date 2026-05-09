@@ -1,12 +1,14 @@
 #!/usr/bin/python
 import cgi, cgitb
+import sys
+import os
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
-
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.db_connection import get_db_connection
-from webserver.core.session_helper import get_session_cookie, get_session_username
+from core.session_helper import get_session_cookie, get_session_username
 
 def send_json_response(data, status_code=200):
     if status_code != 200:

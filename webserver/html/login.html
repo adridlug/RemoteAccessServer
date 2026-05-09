@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Control Panel - Login</title>
-    <link rel="stylesheet" href="dashboard.css?v=20260315">
+    <link rel="stylesheet" href="/static/dashboard.css?v=20260315">
     <style>
         .login-wrapper {
             display: flex;
@@ -91,7 +91,7 @@
 
             <div class="error-message" id="errorMessage"></div>
 
-            <form method="POST" action="dologin.cgi">
+            <form method="POST" action="/api/dologin.cgi">
                 <div class="form-group">
                     <label for="username">Username</label>
                     <input type="text" id="username" name="username" autocomplete="username" required>

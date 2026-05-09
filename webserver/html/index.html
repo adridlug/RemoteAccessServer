@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Control Panel - Clients Dashboard</title>
-    <link rel="stylesheet" href="dashboard.css?v=20260315">
+    <link rel="stylesheet" href="/static/dashboard.css?v=20260315">
 </head>
 <body>
     <div class="container">
@@ -110,7 +110,7 @@
         async function fetchClientData() {
             try {
                 setLoading(true);
-                const response = await fetch('/getinfos.cgi');
+                const response = await fetch('/api/getinfos.cgi');
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
