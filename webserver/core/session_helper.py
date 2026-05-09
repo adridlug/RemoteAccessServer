@@ -1,4 +1,4 @@
-import webserver.core.db_connection as db_connection
+from db_connection import get_db_connection
 from datetime import datetime, timedelta
 import os
 import secrets
@@ -15,7 +15,7 @@ def create_session(username, duration_hours=1):
     conn = None
     cur = None
     try:
-        conn = db_connection.get_db_connection()
+        conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO public.sessions (session_id, username, expires_at) VALUES (%s, %s, %s)",
@@ -38,7 +38,7 @@ def get_session_username(session_id):
         return None
     
     try:
-        conn = db_connection.get_db_connection()
+        conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
             "SELECT username, expires_at FROM public.sessions WHERE session_id = %s",
@@ -81,7 +81,7 @@ def delete_session(session_id):
         return False
     
     try:
-        conn = db_connection.get_db_connection()
+        conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("DELETE FROM public.sessions WHERE session_id = %s", (session_id,))
         conn.commit()

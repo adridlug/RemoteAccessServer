@@ -98,75 +98,59 @@ log_info "Installing Python dependencies..."
 "$VENV_DIR/bin/pip" install psycopg2-binary > /dev/null 2>&1
 log_success "Python dependencies installed"
 
-# Copy CGI files
+# Copy files preserving the source directory structure
 echo ""
-log_info "Copying CGI files..."
-CGI_FOUND=0
+log_info "Copying web application files..."
+
+# Root-level CGI files: index.cgi, login.cgi, more.cgi
 for cgi_file in "$SCRIPT_DIR"/*.cgi; do
     if [ -f "$cgi_file" ]; then
-        CGI_FOUND=1
-        base_name="$(basename "$cgi_file")"
-        cp "$cgi_file" "$WEB_ROOT/$base_name"
-        chmod +x "$WEB_ROOT/$base_name"
-        log_success "Copied $base_name"
+        cp "$cgi_file" "$WEB_ROOT/$(basename "$cgi_file")"
+        chmod +x "$WEB_ROOT/$(basename "$cgi_file")"
+        log_success "Copied $(basename "$cgi_file")"
     fi
 done
 
-if [ "$CGI_FOUND" -eq 0 ]; then
-    log_error "No CGI files (*.cgi) found in $SCRIPT_DIR"
-fi
-
-# Copy Python helper files
-echo ""
-log_info "Copying Python helper files..."
-PY_FOUND=0
-for py_file in "$SCRIPT_DIR"/*.py; do
-    if [ -f "$py_file" ]; then
-        PY_FOUND=1
-        base_name="$(basename "$py_file")"
-        cp "$py_file" "$WEB_ROOT/$base_name"
-        chmod 644 "$WEB_ROOT/$base_name"
-        log_success "Copied $base_name"
-    fi
+# api/ — CGI endpoint scripts
+mkdir -p "$WEB_ROOT/api"
+for f in "$SCRIPT_DIR/api"/*.cgi; do
+    [ -f "$f" ] || continue
+    cp "$f" "$WEB_ROOT/api/$(basename "$f")"
+    chmod +x "$WEB_ROOT/api/$(basename "$f")"
+    log_success "Copied api/$(basename "$f")"
 done
 
-if [ "$PY_FOUND" -eq 0 ]; then
-    log_info "No Python helper files (*.py) found in $SCRIPT_DIR"
-fi
-
-# Copy HTML files
-echo ""
-log_info "Copying HTML/static files..."
-HTML_FOUND=0
-for html_file in "$SCRIPT_DIR"/*.html; do
-    if [ -f "$html_file" ]; then
-        HTML_FOUND=1
-        base_name="$(basename "$html_file")"
-        cp "$html_file" "$WEB_ROOT/$base_name"
-        log_success "Copied $base_name"
-    fi
+# core/ — Python modules and CGI helpers
+mkdir -p "$WEB_ROOT/core"
+for f in "$SCRIPT_DIR/core"/*.py "$SCRIPT_DIR/core"/*.cgi; do
+    [ -f "$f" ] || continue
+    cp "$f" "$WEB_ROOT/core/$(basename "$f")"
+    case "$f" in
+        *.cgi) chmod +x "$WEB_ROOT/core/$(basename "$f")" ;;
+        *.py)  chmod 644 "$WEB_ROOT/core/$(basename "$f")" ;;
+    esac
+    log_success "Copied core/$(basename "$f")"
 done
 
-if [ "$HTML_FOUND" -eq 0 ]; then
-    log_info "No HTML files (*.html) found in $SCRIPT_DIR"
-fi
-
-# Copy CSS files
-echo ""
-log_info "Copying CSS files..."
-CSS_FOUND=0
-for css_file in "$SCRIPT_DIR"/*.css; do
-    if [ -f "$css_file" ]; then
-        CSS_FOUND=1
-        base_name="$(basename "$css_file")"
-        cp "$css_file" "$WEB_ROOT/$base_name"
-        log_success "Copied $base_name"
-    fi
+# html/ — HTML pages
+mkdir -p "$WEB_ROOT/html"
+for f in "$SCRIPT_DIR/html"/*.html; do
+    [ -f "$f" ] || continue
+    cp "$f" "$WEB_ROOT/html/$(basename "$f")"
+    chmod 644 "$WEB_ROOT/html/$(basename "$f")"
+    log_success "Copied html/$(basename "$f")"
 done
 
-if [ "$CSS_FOUND" -eq 0 ]; then
-    log_info "No CSS files (*.css) found in $SCRIPT_DIR"
-fi
+# static/ — CSS and other static assets
+mkdir -p "$WEB_ROOT/static"
+for f in "$SCRIPT_DIR/static"/*; do
+    [ -f "$f" ] || continue
+    cp "$f" "$WEB_ROOT/static/$(basename "$f")"
+    chmod 644 "$WEB_ROOT/static/$(basename "$f")"
+    log_success "Copied static/$(basename "$f")"
+done
+
+log_success "All application files copied"
 
 # Set permissions
 echo ""

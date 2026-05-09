@@ -1,9 +1,11 @@
 #!/usr/bin/python
+import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from core.session_helper import get_session_cookie, get_session_username
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGIN_HTML = os.path.join(SCRIPT_DIR, "login.html")
+LOGIN_HTML = os.path.join(SCRIPT_DIR, "html", "login.html")
 
 try:
     session_id = get_session_cookie()
